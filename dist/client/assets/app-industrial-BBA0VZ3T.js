@@ -1,0 +1,1 @@
+var e=`/assets/app-automotive-BRr0uCfU.jpg`,t=`/assets/app-motorcycle-B5-iicjV.jpg`,n=`/assets/app-heavy-CIZeBZNp.jpg`,r=`/assets/app-industrial-jxQYIv8z.jpg`;export{e as i,n,t as r,r as t};

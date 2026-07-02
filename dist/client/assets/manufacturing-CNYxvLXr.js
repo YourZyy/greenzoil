@@ -1,0 +1,1 @@
+var e=`/assets/factory-r7mxDnDN.jpg`,t=`/assets/manufacturing-2_dc48S2.jpg`;export{e as n,t};
