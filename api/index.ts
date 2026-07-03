@@ -4,7 +4,39 @@ export const config = {
   runtime: "nodejs",
 };
 
-function getAbsoluteUrl(request: Request): string {
+type HeaderSource = Headers | Record<string, string | string[] | undefined>;
+
+function getHeader(headers: HeaderSource, name: string): string | undefined {
+  if (typeof headers.get === "function") {
+    return headers.get(name) ?? undefined;
+  }
+
+  const lowerName = name.toLowerCase();
+  const entry = Object.entries(headers).find(
+    ([key]) => key.toLowerCase() === lowerName,
+  );
+  const value = entry?.[1];
+  if (Array.isArray(value)) return value[0];
+  return value ?? undefined;
+}
+
+function toHeaders(headers: HeaderSource): Headers {
+  if (headers instanceof Headers) {
+    return headers;
+  }
+
+  const normalized = new Headers();
+  for (const [key, value] of Object.entries(headers)) {
+    if (Array.isArray(value)) {
+      for (const item of value) normalized.append(key, item);
+    } else if (value != null) {
+      normalized.set(key, value);
+    }
+  }
+  return normalized;
+}
+
+function getAbsoluteUrl(request: Pick<Request, "url" | "headers">): string {
   const rawUrl = request.url;
 
   if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
@@ -13,24 +45,31 @@ function getAbsoluteUrl(request: Request): string {
 
   const headers = request.headers;
   const host =
-    headers.get("x-forwarded-host") ??
-    headers.get("host") ??
+    getHeader(headers, "x-forwarded-host") ??
+    getHeader(headers, "host") ??
     process.env.VERCEL_URL ??
     "localhost:3000";
 
-  const protocol = headers.get("x-forwarded-proto") ?? "https";
+  const protocol = getHeader(headers, "x-forwarded-proto") ?? "https";
   const pathname = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
   return `${protocol}://${host}${pathname}`;
 }
 
 function normalizeRequest(request: Request): Request {
   const absoluteUrl = getAbsoluteUrl(request);
+  const headers = toHeaders(request.headers);
+  const hasStandardHeaders = request.headers instanceof Headers;
 
-  if (request.url === absoluteUrl) {
+  if (hasStandardHeaders && request.url === absoluteUrl) {
     return request;
   }
 
-  return new Request(absoluteUrl, request);
+  return new Request(absoluteUrl, {
+    method: request.method,
+    headers,
+    body: request.body,
+    ...(request.body ? { duplex: "half" as const } : {}),
+  });
 }
 
 let serverInstance: any = null;
