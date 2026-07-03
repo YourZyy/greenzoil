@@ -4,6 +4,35 @@ export const config = {
   runtime: "nodejs",
 };
 
+function getAbsoluteUrl(request: Request): string {
+  const rawUrl = request.url;
+
+  if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+    return rawUrl;
+  }
+
+  const headers = request.headers;
+  const host =
+    headers.get("x-forwarded-host") ??
+    headers.get("host") ??
+    process.env.VERCEL_URL ??
+    "localhost:3000";
+
+  const protocol = headers.get("x-forwarded-proto") ?? "https";
+  const pathname = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
+  return `${protocol}://${host}${pathname}`;
+}
+
+function normalizeRequest(request: Request): Request {
+  const absoluteUrl = getAbsoluteUrl(request);
+
+  if (request.url === absoluteUrl) {
+    return request;
+  }
+
+  return new Request(absoluteUrl, request);
+}
+
 let serverInstance: any = null;
 let initError: Error | null = null;
 
@@ -23,6 +52,8 @@ async function initializeServer() {
 
 export default async function handler(request: Request): Promise<Response> {
   try {
+    const normalizedRequest = normalizeRequest(request);
+
     // Ensure server is initialized
     const srv = await initializeServer();
 
@@ -31,7 +62,7 @@ export default async function handler(request: Request): Promise<Response> {
     }
 
     // Call server handler
-    const response = await srv.fetch(request, undefined, undefined);
+    const response = await srv.fetch(normalizedRequest, undefined, undefined);
 
     // Ensure response is valid
     if (!response || !(response instanceof Response)) {
