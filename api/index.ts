@@ -89,7 +89,7 @@ async function initializeServer() {
   }
 }
 
-export default async function handler(request: Request): Promise<Response> {
+async function handleRequest(request: Request): Promise<Response> {
   try {
     const normalizedRequest = normalizeRequest(request);
 
@@ -137,3 +137,7 @@ export default async function handler(request: Request): Promise<Response> {
     );
   }
 }
+
+export default {
+  fetch: handleRequest,
+};
