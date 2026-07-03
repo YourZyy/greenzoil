@@ -10,7 +10,8 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "postinstall": "chmod +x node_modules/.bin/*"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
