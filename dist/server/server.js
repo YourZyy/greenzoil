@@ -57,7 +57,12 @@ function renderErrorPage() {
 //#region src/server.ts
 var serverEntryPromise;
 async function getServerEntry() {
-	if (!serverEntryPromise) serverEntryPromise = import("./assets/server-BEgfOPoT.js").then((m) => m.default ?? m);
+	if (!serverEntryPromise) try {
+		serverEntryPromise = import("./assets/server-Db7kARjN.js").then((m) => m.default ?? m);
+	} catch (error) {
+		console.error("[Server] Failed to load server entry:", error);
+		throw error;
+	}
 	return serverEntryPromise;
 }
 async function normalizeCatastrophicSsrResponse(response) {
@@ -65,7 +70,11 @@ async function normalizeCatastrophicSsrResponse(response) {
 	if (!(response.headers.get("content-type") ?? "").includes("application/json")) return response;
 	const body = await response.clone().text();
 	if (!body.includes("\"unhandled\":true") || !body.includes("\"message\":\"HTTPError\"")) return response;
-	console.error(consumeLastCapturedError() ?? /* @__PURE__ */ new Error(`h3 swallowed SSR error: ${body}`));
+	const capturedError = consumeLastCapturedError();
+	console.error("[Server] Catastrophic SSR Response:", {
+		error: capturedError,
+		responseBody: body
+	});
 	return new Response(renderErrorPage(), {
 		status: 500,
 		headers: { "content-type": "text/html; charset=utf-8" }
@@ -75,7 +84,12 @@ var server_default = { async fetch(request, env, ctx) {
 	try {
 		return await normalizeCatastrophicSsrResponse(await (await getServerEntry()).fetch(request, env, ctx));
 	} catch (error) {
-		console.error(error);
+		console.error("[Server] Request handler error:", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : void 0,
+			url: request.url,
+			method: request.method
+		});
 		return new Response(renderErrorPage(), {
 			status: 500,
 			headers: { "content-type": "text/html; charset=utf-8" }

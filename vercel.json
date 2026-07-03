@@ -1,8 +1,12 @@
 {
   "version": 2,
   "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist/client",
+  "buildCommand": "npm run build && npm run build:server || true",
+  "outputDirectory": "dist",
+  "serverFunctions": ["api/**/*.ts"],
+  "env": {
+    "NODE_ENV": "production"
+  },
   "rewrites": [
     {
       "source": "/(.*)",
