@@ -11,9 +11,14 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
-    serverEntryPromise = import("@tanstack/react-start/server-entry").then(
-      (m) => (m.default ?? m) as ServerEntry,
-    );
+    try {
+      serverEntryPromise = import("@tanstack/react-start/server-entry").then(
+        (m) => (m.default ?? m) as ServerEntry,
+      );
+    } catch (error) {
+      console.error("[Server] Failed to load server entry:", error);
+      throw error;
+    }
   }
   return serverEntryPromise;
 }
@@ -30,7 +35,12 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+  const capturedError = consumeLastCapturedError();
+  console.error("[Server] Catastrophic SSR Response:", {
+    error: capturedError,
+    responseBody: body,
+  });
+  
   return new Response(renderErrorPage(), {
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
@@ -44,7 +54,13 @@ export default {
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
-      console.error(error);
+      console.error("[Server] Request handler error:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        url: request.url,
+        method: request.method,
+      });
+      
       return new Response(renderErrorPage(), {
         status: 500,
         headers: { "content-type": "text/html; charset=utf-8" },
